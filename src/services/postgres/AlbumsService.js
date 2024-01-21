@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
-const InvariantError = require('../../../exceptions/InvariantError');
-const NotFoundError = require('../../../exceptions/NotFoundError');
+const InvariantError = require('../../exceptions/InvariantError');
+const NotFoundError = require('../../exceptions/NotFoundError');
 
 class AlbumsService {
   constructor() {
@@ -10,7 +10,7 @@ class AlbumsService {
   }
 
   async addAlbum({ name, year }) {
-    const id = nanoid(16);
+    const id = `album-${nanoid(16)}`;
 
     const query = {
       text: `INSERT INTO ${this.tblAlbums} VALUES($1, $2, $3) RETURNING id`,
@@ -39,7 +39,7 @@ class AlbumsService {
     const resultAlbum = await this._pool.query(queryAlbum);
     const resultSong = await this._pool.query(querySongs);
 
-    if (!resultAlbum.rows.length) {
+    if (!resultAlbum.rowCount) {
       throw new NotFoundError('Album tidak ditemukan');
     }
 
@@ -63,7 +63,7 @@ class AlbumsService {
 
     const result = await this._pool.query(query);
 
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Gagal memperbarui catatan. Id tidak ditemukan');
     }
   }
@@ -76,7 +76,7 @@ class AlbumsService {
 
     const result = await this._pool.query(query);
 
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Catatan gagal dihapus. Id tidak ditemukan');
     }
   }
