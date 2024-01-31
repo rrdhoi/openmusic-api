@@ -4,7 +4,6 @@ const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDetailSongDBToModel, mapSongsDBToModel } = require('../../utils');
 
-/* eslint-disable no-param-reassign */
 class SongsService {
   constructor() {
     this._pool = new Pool();
@@ -30,17 +29,16 @@ class SongsService {
   }
 
   async getSongs(title, performer) {
-    title = title.toLowerCase();
-    performer = performer.toLowerCase();
-
     let query = `SELECT * FROM ${this.tblSongs} WHERE 1=1`;
 
     if (title !== '') {
-      query += ` AND LOWER(${this.tblSongs}.title) LIKE '${title}%'`;
+      const loweredTitle = title.toLowerCase();
+      query += ` AND LOWER(${this.tblSongs}.title) LIKE '${loweredTitle}%'`;
     }
 
     if (performer !== '') {
-      query += ` AND LOWER(${this.tblSongs}.performer) LIKE '${performer}%'`;
+      const loweredPerformer = performer.toLowerCase();
+      query += ` AND LOWER(${this.tblSongs}.performer) LIKE '${loweredPerformer}%'`;
     }
 
     const result = await this._pool.query(query);
@@ -52,13 +50,13 @@ class SongsService {
       text: `SELECT * FROM ${this.tblSongs} WHERE id = $1`,
       values: [id],
     };
-    const result = await this._pool.query(query);
+    const { rows, rowCount } = await this._pool.query(query);
 
-    if (!result.rowCount) {
+    if (!rowCount) {
       throw new NotFoundError('Song tidak ditemukan');
     }
 
-    return mapDetailSongDBToModel(result.rows[0]);
+    return mapDetailSongDBToModel(rows[0]);
   }
 
   async editSongById(id, {

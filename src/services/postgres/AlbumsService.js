@@ -47,10 +47,12 @@ class AlbumsService {
       id,
       name,
       year,
+      cover,
     }) => ({
       id,
       name,
       year,
+      coverUrl: cover,
       songs: resultSong.rows,
     }))[0];
   }
@@ -78,6 +80,30 @@ class AlbumsService {
 
     if (!result.rowCount) {
       throw new NotFoundError('Catatan gagal dihapus. Id tidak ditemukan');
+    }
+  }
+
+  async addAlbumCover(id, url) {
+    const query = {
+      text: `UPDATE ${this.tblAlbums}
+            SET cover = $2
+            WHERE id = $1`,
+      values: [id, url],
+    };
+
+    await this._pool.query(query);
+  }
+
+  async verifyAlbumIsExists(id) {
+    const queryAlbum = {
+      text: `SELECT * FROM ${this.tblAlbums} WHERE ${this.tblAlbums}.id = $1;`,
+      values: [id],
+    };
+
+    const resultAlbum = await this._pool.query(queryAlbum);
+
+    if (!resultAlbum.rowCount) {
+      throw new NotFoundError('Album tidak ditemukan');
     }
   }
 }
