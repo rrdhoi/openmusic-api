@@ -5,7 +5,8 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDetailSongDBToModel, mapSongsDBToModel } = require('../../utils');
 
 class SongsService {
-  constructor() {
+  constructor(cachesService) {
+    this._cachesService = cachesService;
     this._pool = new Pool();
     this.tblSongs = 'songs';
   }
@@ -24,6 +25,8 @@ class SongsService {
     if (!result.rows[0].id) {
       throw new InvariantError('Song gagal ditambahkan');
     }
+
+    await this._cachesService.delete(`album:${albumId}`);
 
     return result.rows[0].id;
   }
@@ -60,23 +63,32 @@ class SongsService {
   }
 
   async editSongById(id, {
-    albumId, title, year, genre, performer, duration,
+    title, year, genre, performer, duration,
   }) {
     const query = {
-      text: `UPDATE ${this.tblSongs} SET album_id = $1, title = $2, year = $3, genre = $4, performer = $5, duration = $6 WHERE id = $7 RETURNING id`,
-      values: [albumId, title, year, genre, performer, duration, id],
+      text: `UPDATE ${this.tblSongs} 
+         SET title = $1, 
+             year = $2, 
+             genre = $3, 
+             performer = $4, 
+             duration = $5 
+         WHERE id = $6 
+         RETURNING id, album_id`,
+      values: [title, year, genre, performer, duration, id],
     };
 
     const result = await this._pool.query(query);
 
     if (!result.rowCount) {
       throw new NotFoundError('Gagal memperbarui song. Id tidak ditemukan');
+    } else if (result.rows[0].album_id !== undefined) {
+      await this._cachesService.delete(`album:${result.rows[0].album_id}`);
     }
   }
 
   async deleteSongById(id) {
     const query = {
-      text: `DELETE FROM ${this.tblSongs} WHERE id = $1 RETURNING id`,
+      text: `DELETE FROM ${this.tblSongs} WHERE id = $1 RETURNING id, album_id`,
       values: [id],
     };
 
@@ -84,6 +96,8 @@ class SongsService {
 
     if (!result.rowCount) {
       throw new NotFoundError('Song gagal dihapus. Id tidak ditemukan');
+    } else if (result.rows[0].album_id !== undefined) {
+      await this._cachesService.delete(`album:${result.rows[0].album_id}`);
     }
   }
 }

@@ -43,11 +43,11 @@ class AlbumLikesService {
 
     const result = await this._pool.query(query);
 
-    await this._cachesService.delete(`albumLikes:${albumId}`);
-
     if (!result.rowCount) {
       throw new InvariantError('Like gagal ditambahkan');
     }
+
+    await this._cachesService.delete(`albumLikes:${albumId}`);
   }
 
   async deleteAlbumLikes(albumId, userId) {
@@ -58,11 +58,11 @@ class AlbumLikesService {
 
     const result = await this._pool.query(query);
 
-    await this._cachesService.delete(`albumLikes:${albumId}`);
-
     if (!result.rowCount) {
       throw new InvariantError('Like gagal dihapus');
     }
+
+    await this._cachesService.delete(`albumLikes:${albumId}`);
   }
 }
 

@@ -33,13 +33,13 @@ const config = require('./utils/config');
 
 const init = async () => {
   const authenticationsService = new AuthenticationsService();
+  const cacheService = new CacheService();
   const usersService = new UsersService();
-  const albumsService = new AlbumsService();
-  const songsService = new SongsService();
+  const albumsService = new AlbumsService(cacheService);
+  const songsService = new SongsService(cacheService);
   const collaborationsService = new CollaborationsService();
   const playlistsService = new PlaylistsService(collaborationsService);
   const activitiesPlaylistService = new ActivitiesPlaylistService();
-  const cacheService = new CacheService();
   const albumLikesService = new AlbumLikesService(cacheService);
 
   const storageService = new StorageService(path.resolve(__dirname, 'api/uploads/file/images'));

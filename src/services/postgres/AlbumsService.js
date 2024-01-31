@@ -4,7 +4,8 @@ const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 
 class AlbumsService {
-  constructor() {
+  constructor(cachesService) {
+    this._cachesService = cachesService;
     this._pool = new Pool();
     this.tblAlbums = 'albums';
   }
@@ -27,34 +28,46 @@ class AlbumsService {
   }
 
   async getAlbumById(albumId) {
-    const queryAlbum = {
-      text: `SELECT * FROM ${this.tblAlbums} WHERE ${this.tblAlbums}.id = $1;`,
-      values: [albumId],
-    };
+    try {
+      const result = await this._cachesService.get(`album:${albumId}`);
+      return {
+        dataSource: 'cache',
+        data: JSON.parse(result),
+      };
+    } catch (e) {
+      const queryAlbum = {
+        text: `SELECT * FROM ${this.tblAlbums} WHERE ${this.tblAlbums}.id = $1;`,
+        values: [albumId],
+      };
 
-    const querySongs = {
-      text: 'SELECT * FROM songs WHERE songs.album_id = $1;',
-      values: [albumId],
-    };
-    const resultAlbum = await this._pool.query(queryAlbum);
-    const resultSong = await this._pool.query(querySongs);
+      const querySongs = {
+        text: 'SELECT * FROM songs WHERE songs.album_id = $1;',
+        values: [albumId],
+      };
+      const resultAlbum = await this._pool.query(queryAlbum);
+      const resultSong = await this._pool.query(querySongs);
 
-    if (!resultAlbum.rowCount) {
-      throw new NotFoundError('Album tidak ditemukan');
+      if (!resultAlbum.rowCount) {
+        throw new NotFoundError('Album tidak ditemukan');
+      }
+
+      const finalResult = resultAlbum.rows.map(({
+        id,
+        name,
+        year,
+        cover,
+      }) => ({
+        id,
+        name,
+        year,
+        coverUrl: cover,
+        songs: resultSong.rows,
+      }))[0];
+
+      await this._cachesService.set(`album:${albumId}`, JSON.stringify(finalResult));
+
+      return finalResult;
     }
-
-    return resultAlbum.rows.map(({
-      id,
-      name,
-      year,
-      cover,
-    }) => ({
-      id,
-      name,
-      year,
-      coverUrl: cover,
-      songs: resultSong.rows,
-    }))[0];
   }
 
   async editAlbumById(id, { name, year }) {
@@ -68,6 +81,8 @@ class AlbumsService {
     if (!result.rowCount) {
       throw new NotFoundError('Gagal memperbarui catatan. Id tidak ditemukan');
     }
+
+    await this._cachesService.delete(`album:${id}`);
   }
 
   async deleteAlbumById(id) {
@@ -81,6 +96,8 @@ class AlbumsService {
     if (!result.rowCount) {
       throw new NotFoundError('Catatan gagal dihapus. Id tidak ditemukan');
     }
+
+    await this._cachesService.delete(`album:${id}`);
   }
 
   async addAlbumCover(id, url) {
@@ -92,6 +109,8 @@ class AlbumsService {
     };
 
     await this._pool.query(query);
+
+    await this._cachesService.delete(`album:${id}`);
   }
 
   async verifyAlbumIsExists(id) {
